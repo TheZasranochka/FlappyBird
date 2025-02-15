@@ -13,8 +13,7 @@
 <body>
 <canvas id="gameCanvas"></canvas>
 <script>
-    const canvas = document.createElement("canvas");
-    document.body.appendChild(canvas);
+    const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
     canvas.width = 1920;
@@ -30,55 +29,69 @@
     pipeTop.src = "pipeTop.png";
     pipeBottom.src = "pipeBottom.png";
 
+    let bird = { x: 50, y: 150, radius: 10, velocity: 0, gravity: 0.07, lift:  -3 };
+    let pipes = [];
+    let pipeWidth = 50, pipeGap = 150;
+    let frame = 0, score = 0, speed = 2, gameOver = false;
+    let angle = 0;
 
-    const bird = {
-        x: 50, y: 150, radius: 10,
-        velocity: 0, gravity: 0.07, lift: -3, maxFallSpeed: 1.5
-    };
-
-    const pipes = [];
-    const pipeWidth = 40, pipeGap = 100
-    let frame = 0, score = 0, gameOver = false;
+    function resetGame() {
+        bird = { x: 50, y: 150, radius: 10, velocity: 0, gravity: 0.07, lift:  -3 };
+        pipes = [];
+        frame = 0;
+        score = 0;
+        speed = 2;
+        gameOver = false;
+    }
 
     function update() {
         if (gameOver) return;
 
         bird.velocity += bird.gravity;
         bird.y += bird.velocity;
+        angle = Math.min(Math.max(bird.velocity * 4, -30), 30);
 
         if (frame % 360 === 0) {
             let topHeight = Math.random() * (canvas.height - pipeGap - 50) + 20;
             pipes.push({x: canvas.width, top: topHeight, bottom: topHeight + pipeGap});
         }
 
-        for (let i = 0; i < pipes.length; i++) {
-            pipes[i].x -= 2;
-            if (pipes[i].x + pipeWidth < 0) {
+        pipes.forEach((pipe, i) => {
+            pipe.x -= speed;
+            if (pipe.x + pipeWidth < 0) {
                 pipes.splice(i, 1);
                 score++;
+                speed += 0.05;
             }
 
-            if (bird.x + bird.radius > pipes[i].x && bird.x - bird.radius < bird.radius < pipes[i].x + pipeWidth) {
-                if (bird.y - bird.radius < pipes[i].top || bird.y + bird.radius > pipes[i].bottom) {
-                    gameOver = true;
-                }
+            if (
+                bird.x + bird.radius > pipe.x && bird.x - bird.radius < pipe.x + pipeWidth &&
+                (bird.y - bird.radius < pipe.top || bird.y + bird.radius > pipe.bottom)
+            ) {
+                gameOver = true;
             }
-        }
+        });
+
         if (bird.y + bird.radius > canvas.height || bird.y - bird.radius < 0) {
             gameOver = true;
         }
-        frame++
+
+        frame++;
     }
 
     function draw() {
         ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
 
-        for (const pipe of pipes) {
-            ctx.drawImage(pipeTop, pipe.x, pipe.top - pipeTop.height)
+        pipes.forEach(pipe => {
+            ctx.drawImage(pipeTop, pipe.x, pipe.top - pipeTop.height);
             ctx.drawImage(pipeBottom, pipe.x, pipe.bottom);
-        }
+        });
 
-        ctx.drawImage(birdImg, bird.x, bird.y);
+        ctx.save();
+        ctx.translate(bird.x, bird.y);
+        ctx.rotate((Math.PI / 180) * angle);
+        ctx.drawImage(birdImg, -birdImg.width / 2, -birdImg.height / 2);
+        ctx.restore();
 
         ctx.fillStyle = "black";
         ctx.font = "20px Arial";
@@ -87,16 +100,20 @@
         if (gameOver) {
             ctx.fillStyle = "red";
             ctx.font = "30px Arial";
-            ctx.fillText("Вы проиграли", 80, canvas.height / 2);
+            ctx.fillText("Вы проиграли. Нажмите пробел для перезапуска", 80, canvas.height / 2);
         }
     }
 
     function flap() {
-        if (!gameOver) bird.velocity = bird.lift;
+        if (!gameOver) {
+            bird.velocity = bird.lift;
+        } else {
+            resetGame();
+        }
     }
 
     document.addEventListener("keydown", (e) => e.code === "Space" && flap());
-    document.addEventListener("click", flap)
+    document.addEventListener("click", flap);
 
     function gameLoop() {
         update();
@@ -105,8 +122,6 @@
     }
 
     gameLoop();
-
-
 </script>
 </body>
 </html>
